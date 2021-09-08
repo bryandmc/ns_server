@@ -55,7 +55,7 @@
 
 -record(s, {listeners = [],
             acceptors = [],
-            creation = undefined,
+            creation = -1,
             kernel_pid = undefined,
             config = undefined,
             name = undefined,
@@ -231,7 +231,7 @@ init([]) ->
     Config = read_config(config_path(), true),
     info_msg("Starting cb_dist with config ~p", [Config]),
     process_flag(trap_exit,true),
-    {ok, #s{config = Config, creation = rand:uniform(4) - 1,
+    {ok, #s{config = Config, creation = -1,
             is_pkey_encrypted = is_pkey_encrypted()}}.
 
 handle_call({listen, Name}, _From, #s{creation = Creation} = State) ->
@@ -632,9 +632,10 @@ listen_proto({AddrType, Module}, NodeName) ->
     NameStr = atom_to_list(NodeName),
     Port = cb_epmd:port_for_node(Module, NameStr),
     info_msg("Starting ~p listener on ~p...", [Module, Port]),
+    ListenAddr = get_listen_addr(AddrType, Module),
     ListenFun =
         fun () ->
-                case Module:listen(NodeName) of
+                case Module:listen(NodeName, ListenAddr) of
                     {ok, _} = Res ->
                         info_msg("Started listener: ~p", [Module]),
                         maybe_register_on_epmd(Module, NodeName, Port),
@@ -642,7 +643,6 @@ listen_proto({AddrType, Module}, NodeName) ->
                     Error -> Error
                 end
         end,
-    ListenAddr = get_listen_addr(AddrType, Module),
     case with_dist_ip_and_port(ListenAddr, Port, ListenFun) of
         {ok, Res} -> {ok, Res};
         ignore ->

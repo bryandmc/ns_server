@@ -23,6 +23,12 @@
          register_node/2, register_node/3, is_local_node/1, node_type/1,
          get_port/4]).
 
+%% Since OTP23
+-define(OTP_PROTOCOL_VERSION, 6).
+
+%% Since R6
+%% -define(OTP_PROTOCOL_VERSION, 5).
+
 %%%----------------------------------------------------------------------
 %%% API
 %%%----------------------------------------------------------------------
@@ -73,7 +79,7 @@ get_port(NodeName, NodeHost, AFamily, Encryption, Timeout) ->
                         _ ->
                             case port_for_node(Module, NodeName) of
                                 noport -> noport;
-                                P -> {port, P, 5}
+                                P -> {port, P, ?OTP_PROTOCOL_VERSION}
                             end
                     end;
                 {error, _} = Error -> Error
@@ -81,7 +87,7 @@ get_port(NodeName, NodeHost, AFamily, Encryption, Timeout) ->
         {_, _} ->
             case port_for_node(Module, NodeName) of
                 noport -> noport;
-                P -> {port, P, 5}
+                P -> {port, P, ?OTP_PROTOCOL_VERSION}
             end
     catch
         error:Error ->
