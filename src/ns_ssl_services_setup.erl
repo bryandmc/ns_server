@@ -184,7 +184,7 @@ supported_versions(MinVer) ->
         undefined ->
             Patches = proplists:get_value(couchbase_patches,
                                           ssl:versions(), []),
-            Versions0 = ['tlsv1.1', 'tlsv1.2'],
+            Versions0 = ['tlsv1.1', 'tlsv1.2',  'tlsv1.3'],
 
             Versions1 = case lists:member(tls_padding_check, Patches) of
                             true ->
@@ -320,6 +320,7 @@ ssl_server_opts() ->
     CipherSuites = ns_server_ciphers(),
     Order = honor_cipher_order(ns_server),
     ClientReneg = ns_config:read_key_fast(client_renegotiation_allowed, false),
+    OtpVersion = erlang:list_to_integer(erlang:system_info(otp_release)),
     %% Pass CA as cacerts opt (instead of cacertfile) in order to
     %% work around unknown bug in erlang ssl application that leads to
     %% the following behavior:
@@ -328,10 +329,10 @@ ssl_server_opts() ->
     ssl_auth_options() ++
         [{keyfile, pkey_file_path()},
          %% It should be chain_file_path() for erl >= 23
-         {certfile, cert_file_path_erl22()},
+         {certfile, cert_file_path(OtpVersion)},
          {versions, supported_versions(ssl_minimum_protocol(ns_server))},
          %% It should be just ca_file_path() for erl >= 23
-         {cacerts, read_ca_certs(ca_file_path_erl22())},
+         {cacerts, read_ca_certs(ca_file_path(OtpVersion))},
          {dh, dh_params_der()},
          {ciphers, CipherSuites},
          {honor_cipher_order, Order},
@@ -369,6 +370,19 @@ marker_path() ->
     filename:join(path_config:component_path(data, "config"), "reload_marker").
 
 ca_file_path() ->
+    ca_file_path_erl23_plus().
+
+ca_file_path(OtpVersion) when OtpVersion >= 23 ->
+    ca_file_path_erl23_plus();
+ca_file_path(OtpVersion) when OtpVersion < 23 ->
+    ca_file_path_erl22().
+
+cert_file_path(OtpVersion) when OtpVersion >= 23 ->
+    chain_file_path();
+cert_file_path(OtpVersion) when OtpVersion < 23 ->
+    cert_file_path_erl22().
+
+ca_file_path_erl23_plus() ->
     filename:join(path_config:component_path(data, "config"), "ca.pem").
 chain_file_path() ->
     filename:join(path_config:component_path(data, "config"), "chain.pem").
